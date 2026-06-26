@@ -54,6 +54,7 @@ def helpMessage = """\
     demo                    Run a demonstration of AMR++ using test data
     standard_AMR            Standard AMR++ pipeline (QC → trim → host removal → resistome)
     fast_AMR                Fast AMR++ pipeline without host removal
+    fast_AMR_wKraken        Fast AMR++ with Kraken (no host removal)
     standard_AMR_wKraken    Standard pipeline with Kraken microbiome analysis
 
     -------------------------------------------------------------------------------
@@ -73,7 +74,7 @@ def helpMessage = """\
     se_AMR_wKraken          Single-end read pipeline with Kraken analysis
 
     -------------------------------------------------------------------------------
-                         PAIRED-END SUBWORKFLOWS
+                          PAIRED-END SUBWORKFLOWS
     -------------------------------------------------------------------------------
     Individual analysis steps that can be run independently.
 
@@ -86,7 +87,7 @@ def helpMessage = """\
     qiime2                  Perform QIIME 2 16S rRNA analysis
 
     -------------------------------------------------------------------------------
-                        SINGLE-END SUBWORKFLOWS
+                         SINGLE-END SUBWORKFLOWS
     -------------------------------------------------------------------------------
     Individual analysis steps for single-end data.
 
@@ -97,7 +98,7 @@ def helpMessage = """\
     se_kraken               Kraken analysis for single-end reads
 
     -------------------------------------------------------------------------------
-                        MERGED READ SUBWORKFLOWS
+                         MERGED READ SUBWORKFLOWS
     -------------------------------------------------------------------------------
     Individual analysis steps for merged read data.
 
@@ -107,7 +108,7 @@ def helpMessage = """\
     merged_kraken           Kraken analysis for merged reads
 
     -------------------------------------------------------------------------------
-                           BAM FILE WORKFLOWS
+                            BAM FILE WORKFLOWS
     -------------------------------------------------------------------------------
     For analyzing pre-aligned BAM files.
 
@@ -115,7 +116,7 @@ def helpMessage = """\
     bam_resistome_counts    Resistome counting from BAM files
 
     -------------------------------------------------------------------------------
-                              OPTIONS
+                               OPTIONS
     -------------------------------------------------------------------------------
 
     Input/Output:
@@ -137,7 +138,7 @@ def helpMessage = """\
                             (increases runtime and storage requirements)
 
     -------------------------------------------------------------------------------
-                              PROFILES
+                               PROFILES
     -------------------------------------------------------------------------------
     Use -profile to specify your computing environment:
 
@@ -151,7 +152,7 @@ def helpMessage = """\
         docker              Uses Docker container
 
     -------------------------------------------------------------------------------
-                              EXAMPLES
+                               EXAMPLES
     -------------------------------------------------------------------------------
 
     # Run demonstration
@@ -164,6 +165,10 @@ def helpMessage = """\
     # Fast analysis (no host removal)
     nextflow run main_AMR++.nf -profile conda --pipeline fast_AMR \\
         --reads 'data/*_R{1,2}.fastq.gz'
+
+    # Fast analysis with Kraken (no host removal)
+    nextflow run main_AMR++.nf -profile conda --pipeline fast_AMR_wKraken \\
+        --reads 'data/*_R{1,2}.fastq.gz' --kraken_db /path/to/kraken_db
 
     # Single-end analysis
     nextflow run main_AMR++.nf -profile conda --pipeline se_AMR \\
@@ -205,6 +210,7 @@ Channel
 // Load main pipeline workflows
 include { STANDARD_AMRplusplus } from './subworkflows/AMR++_standard.nf' 
 include { FAST_AMRplusplus } from './subworkflows/AMR++_fast.nf'
+include { FAST_AMRplusplus_wKraken } from './subworkflows/AMR++_fast_wKraken.nf'
 include { STANDARD_AMRplusplus_wKraken } from './subworkflows/AMR++_standard_wKraken.nf'
 
 // Load merged read workflows
@@ -267,6 +273,11 @@ workflow {
             "Streamlined pipeline without host removal step.\n    Use when host contamination is not a concern.")
         FAST_AMRplusplus(fastq_files, params.amr, params.annotation)
     } 
+    else if(params.pipeline == "fast_AMR_wKraken") {
+        logPipelineStart("Fast AMR++ with Kraken",
+            "Fast pipeline with Kraken taxonomic classification.\n    Skips host removal; combines resistome and microbiome analysis on trimmed reads.")
+        FAST_AMRplusplus_wKraken(fastq_files, params.amr, params.annotation)
+    }
     else if(params.pipeline == "standard_AMR_wKraken") {
         logPipelineStart("Standard AMR++ with Kraken",
             "Full pipeline with Kraken taxonomic classification.\n    Combines resistome and microbiome analysis.")
